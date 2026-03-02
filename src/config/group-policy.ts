@@ -7,7 +7,7 @@ import {
   type GroupToolPolicyBySenderConfig,
   type GroupToolPolicyConfig,
   type ToolsBySenderKeyType,
-} from "./types.tools.js";
+} from "./types.tools.js"
 
 export type GroupPolicyChannel = ChannelId;
 
@@ -71,7 +71,9 @@ function resolveChannelGroupConfig(
   const target = groupId.toLowerCase();
   const parentTarget = parentId?.toLowerCase();
   const matchedKey = Object.keys(groups).find((key) => {
-    if (key === "*") return false;
+    if (key === "*") {
+      return false;
+    }
     const lower = key.toLowerCase();
     return lower === target || (parentTarget != null && lower === parentTarget);
   });
