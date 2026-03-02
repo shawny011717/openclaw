@@ -26,6 +26,25 @@ export type ChannelGroupPolicy = {
 
 type ChannelGroups = Record<string, ChannelGroupConfig>;
 
+/**
+ * Thread/topic markers that separate a parent group ID from its sub-context.
+ * When a forum topic peer like `-1001234567890:topic:99` doesn't match any
+ * explicit group entry, we strip the marker and everything after it to fall
+ * back to the parent group config (`-1001234567890`).
+ */
+const GROUP_THREAD_MARKERS = [":topic:", ":thread:"];
+
+function stripThreadSuffix(groupId: string): string | undefined {
+  const lowered = groupId.toLowerCase();
+  for (const marker of GROUP_THREAD_MARKERS) {
+    const idx = lowered.lastIndexOf(marker);
+    if (idx > 0) {
+      return groupId.slice(0, idx);
+    }
+  }
+  return undefined;
+}
+
 function resolveChannelGroupConfig(
   groups: ChannelGroups | undefined,
   groupId: string,
@@ -38,11 +57,24 @@ function resolveChannelGroupConfig(
   if (direct) {
     return direct;
   }
+  // Forum topic / thread fallback: try the parent group ID.
+  const parentId = stripThreadSuffix(groupId);
+  if (parentId) {
+    const parentMatch = groups[parentId];
+    if (parentMatch) {
+      return parentMatch;
+    }
+  }
   if (!caseInsensitive) {
     return undefined;
   }
   const target = groupId.toLowerCase();
-  const matchedKey = Object.keys(groups).find((key) => key !== "*" && key.toLowerCase() === target);
+  const parentTarget = parentId?.toLowerCase();
+  const matchedKey = Object.keys(groups).find((key) => {
+    if (key === "*") return false;
+    const lower = key.toLowerCase();
+    return lower === target || (parentTarget != null && lower === parentTarget);
+  });
   if (!matchedKey) {
     return undefined;
   }
@@ -107,7 +139,7 @@ function warnLegacyToolsBySenderKey(rawKey: string) {
   }
   warnedLegacyToolsBySenderKeys.add(trimmed);
   process.emitWarning(
-    `toolsBySender key "${trimmed}" is deprecated. Use explicit prefixes (id:, e164:, username:, name:). Legacy unprefixed keys are matched as id only.`,
+    `toolsBySender key \"${trimmed}\" is deprecated. Use explicit prefixes (id:, e164:, username:, name:). Legacy unprefixed keys are matched as id only.`,
     {
       type: "DeprecationWarning",
       code: "OPENCLAW_TOOLS_BY_SENDER_UNTYPED_KEY",
