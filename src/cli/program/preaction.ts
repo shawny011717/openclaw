@@ -87,6 +87,10 @@ function getCliLogLevel(actionCommand: Command): LogLevel | undefined {
   return typeof logLevel === "string" ? (logLevel as LogLevel) : undefined;
 }
 
+// Commands that use stdout as a structured protocol channel (e.g. ND-JSON).
+// Any non-protocol text on stdout (banners, doctor warnings) corrupts the stream.
+const STDOUT_PROTOCOL_COMMANDS = new Set(["acp"]);
+
 function isJsonOutputMode(commandPath: string[], argv: string[]): boolean {
   if (!hasFlag(argv, "--json")) {
     return false;
@@ -96,6 +100,10 @@ function isJsonOutputMode(commandPath: string[], argv: string[]): boolean {
     return false;
   }
   return true;
+}
+
+function needsCleanStdout(commandPath: string[], argv: string[]): boolean {
+  return isJsonOutputMode(commandPath, argv) || STDOUT_PROTOCOL_COMMANDS.has(commandPath[0]);
 }
 
 export function registerPreActionHooks(program: Command, programVersion: string) {
@@ -110,6 +118,7 @@ export function registerPreActionHooks(program: Command, programVersion: string)
       isTruthyEnvValue(process.env.OPENCLAW_HIDE_BANNER) ||
       commandPath[0] === "update" ||
       commandPath[0] === "completion" ||
+      STDOUT_PROTOCOL_COMMANDS.has(commandPath[0]) ||
       (commandPath[0] === "plugins" && commandPath[1] === "update");
     if (!hideBanner) {
       emitCliBanner(programVersion);
@@ -126,7 +135,7 @@ export function registerPreActionHooks(program: Command, programVersion: string)
     if (shouldBypassConfigGuard(commandPath)) {
       return;
     }
-    const suppressDoctorStdout = isJsonOutputMode(commandPath, argv);
+    const suppressDoctorStdout = needsCleanStdout(commandPath, argv);
     const { ensureConfigReady } = await loadConfigGuardModule();
     await ensureConfigReady({
       runtime: defaultRuntime,

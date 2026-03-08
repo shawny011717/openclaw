@@ -86,6 +86,7 @@ describe("registerPreActionHooks", () => {
     program.command("agents").action(() => {});
     program.command("configure").action(() => {});
     program.command("onboard").action(() => {});
+    program.command("acp").action(() => {});
     program
       .command("update")
       .command("status")
@@ -205,6 +206,20 @@ describe("registerPreActionHooks", () => {
     expect(ensureConfigReadyMock).toHaveBeenCalledWith({
       runtime: runtimeMock,
       commandPath: ["config", "set"],
+    });
+  });
+
+  it("suppresses doctor stdout and banner for acp command", async () => {
+    await runPreAction({
+      parseArgv: ["acp"],
+      processArgv: ["node", "openclaw", "acp"],
+    });
+
+    expect(emitCliBannerMock).not.toHaveBeenCalled();
+    expect(ensureConfigReadyMock).toHaveBeenCalledWith({
+      runtime: runtimeMock,
+      commandPath: ["acp"],
+      suppressDoctorStdout: true,
     });
   });
 
