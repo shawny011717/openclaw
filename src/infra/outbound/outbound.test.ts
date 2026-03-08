@@ -1235,6 +1235,20 @@ describe("normalizeOutboundPayloads", () => {
     ]);
     expect(normalized).toEqual([{ text: "final answer", mediaUrls: [] }]);
   });
+
+  it("strips echoed inbound metadata from outbound text", () => {
+    const contaminated = [
+      "Sender (untrusted metadata):",
+      "```json",
+      '{"label":"Alice","id":"12345"}',
+      "```",
+      "",
+      "Here is your answer.",
+    ].join("\n");
+    const normalized = normalizeOutboundPayloads([{ text: contaminated }]);
+    expect(normalized).toHaveLength(1);
+    expect(normalized[0].text).toBe("Here is your answer.");
+  });
 });
 
 describe("formatOutboundPayloadLog", () => {
